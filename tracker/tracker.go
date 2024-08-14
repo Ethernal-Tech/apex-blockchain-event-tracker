@@ -343,12 +343,9 @@ func (e *EventTracker) getNewState(latestBlock *ethgo.Block) error {
 
 	// get blocks in batches
 	for i := startBlock; i < latestBlock.Number; i += e.config.SyncBatchSize {
-		end := i + e.config.SyncBatchSize - 1
-		if end > latestBlock.Number {
-			// we go until the latest block, since we don't need to
-			// query for it using an rpc point, since we already have it
-			end = latestBlock.Number - 1
-		}
+		// we go until the latest block, since we don't need to
+		// query for it using an rpc point, since we already have it
+		end := min(i+e.config.SyncBatchSize-1, latestBlock.Number-1)
 
 		e.config.Logger.Info("Getting new state for block batch", "fromBlock", i, "toBlock", end)
 

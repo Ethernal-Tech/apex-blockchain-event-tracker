@@ -1,11 +1,9 @@
 package store
 
 import (
-	"fmt"
 	"os"
-	"path"
+	"path/filepath"
 	"testing"
-	"time"
 
 	"github.com/Ethernal-Tech/ethgo"
 	"github.com/Ethernal-Tech/ethgo/abi"
@@ -35,17 +33,10 @@ func CreateTestLogForStateSyncEvent(t *testing.T, blockNumber, logIndex uint64) 
 }
 
 // NewTestTrackerStore creates new instance of state used by tests.
-func NewTestTrackerStore(tb testing.TB) *BoltDBEventTrackerStore {
+func NewTestTrackerStore(tb testing.TB) *BBoltDBEventTrackerStore {
 	tb.Helper()
 
-	dir := fmt.Sprintf("/tmp/even-tracker-temp_%v", time.Now().UTC().Format(time.RFC3339Nano))
-	err := os.Mkdir(dir, 0775)
-
-	if err != nil {
-		tb.Fatal(err)
-	}
-
-	store, err := NewBoltDBEventTrackerStore(path.Join(dir, "tracker.db"))
+	dir, err := os.MkdirTemp("", "even-tracker-temp")
 	if err != nil {
 		tb.Fatal(err)
 	}
@@ -55,6 +46,11 @@ func NewTestTrackerStore(tb testing.TB) *BoltDBEventTrackerStore {
 			tb.Fatal(err)
 		}
 	})
+
+	store, err := NewBoltDBEventTrackerStore(filepath.Join(dir, "tracker.db"))
+	if err != nil {
+		tb.Fatal(err)
+	}
 
 	return store
 }

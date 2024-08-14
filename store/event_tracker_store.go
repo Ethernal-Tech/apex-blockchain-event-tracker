@@ -6,7 +6,7 @@ import (
 
 	"github.com/Ethernal-Tech/blockchain-event-tracker/common"
 	"github.com/Ethernal-Tech/ethgo"
-	bolt "go.etcd.io/bbolt"
+	"go.etcd.io/bbolt"
 )
 
 var (
@@ -25,11 +25,11 @@ type EventTrackerStore interface {
 	GetAllLogs() ([]*ethgo.Log, error)
 }
 
-var _ EventTrackerStore = (*BoltDBEventTrackerStore)(nil)
+var _ EventTrackerStore = (*BBoltDBEventTrackerStore)(nil)
 
-// BoltDBEventTrackerStore represents a store for event tracker events
-type BoltDBEventTrackerStore struct {
-	db *bolt.DB
+// BBoltDBEventTrackerStore represents a store for event tracker events
+type BBoltDBEventTrackerStore struct {
+	db *bbolt.DB
 }
 
 // NewBoltDBEventTrackerStore is a constructor function that creates
@@ -44,13 +44,13 @@ type BoltDBEventTrackerStore struct {
 //
 // Outputs:
 //   - A new instance of the BoltDBEventTrackerStore struct with a connection to the event tracker store db.
-func NewBoltDBEventTrackerStore(dbPath string) (*BoltDBEventTrackerStore, error) {
-	db, err := bolt.Open(dbPath, 0666, nil)
+func NewBoltDBEventTrackerStore(dbPath string) (*BBoltDBEventTrackerStore, error) {
+	db, err := bbolt.Open(dbPath, 0666, nil)
 	if err != nil {
 		return nil, err
 	}
 
-	err = db.Update(func(tx *bolt.Tx) error {
+	err = db.Update(func(tx *bbolt.Tx) error {
 		_, err := tx.CreateBucketIfNotExists(petLastProcessedBlockBucket)
 		if err != nil {
 			return err
@@ -64,7 +64,7 @@ func NewBoltDBEventTrackerStore(dbPath string) (*BoltDBEventTrackerStore, error)
 		return nil, err
 	}
 
-	return &BoltDBEventTrackerStore{db: db}, nil
+	return &BBoltDBEventTrackerStore{db: db}, nil
 }
 
 // GetLastProcessedBlock retrieves the last processed block number from a BoltDB database.
@@ -83,10 +83,10 @@ func NewBoltDBEventTrackerStore(dbPath string) (*BoltDBEventTrackerStore, error)
 //
 //	blockNumber: The last processed block number retrieved from the database.
 //	err: Any error that occurred during the database operation.
-func (p *BoltDBEventTrackerStore) GetLastProcessedBlock() (uint64, error) {
+func (p *BBoltDBEventTrackerStore) GetLastProcessedBlock() (uint64, error) {
 	var blockNumber uint64
 
-	err := p.db.View(func(tx *bolt.Tx) error {
+	err := p.db.View(func(tx *bbolt.Tx) error {
 		value := tx.Bucket(petLastProcessedBlockBucket).Get(petLastProcessedBlockKey)
 		if value != nil {
 			blockNumber = common.EncodeBytesToUint64(value)
@@ -105,8 +105,8 @@ func (p *BoltDBEventTrackerStore) GetLastProcessedBlock() (uint64, error) {
 //
 // Outputs:
 // - error: An error indicating if there was a problem with the transaction or the insertion.
-func (p *BoltDBEventTrackerStore) InsertLastProcessedBlock(lastProcessedBlockNumber uint64) error {
-	return p.db.Update(func(tx *bolt.Tx) error {
+func (p *BBoltDBEventTrackerStore) InsertLastProcessedBlock(lastProcessedBlockNumber uint64) error {
+	return p.db.Update(func(tx *bbolt.Tx) error {
 		return tx.Bucket(petLastProcessedBlockBucket).Put(
 			petLastProcessedBlockKey, common.EncodeUint64ToBytes(lastProcessedBlockNumber))
 	})
@@ -129,8 +129,8 @@ func (p *BoltDBEventTrackerStore) InsertLastProcessedBlock(lastProcessedBlockNum
 //
 // Outputs:
 //   - error: If an error occurs during the insertion process, it is returned. Otherwise, nil is returned.
-func (p *BoltDBEventTrackerStore) InsertLogs(logs []*ethgo.Log) error {
-	return p.db.Update(func(tx *bolt.Tx) error {
+func (p *BBoltDBEventTrackerStore) InsertLogs(logs []*ethgo.Log) error {
+	return p.db.Update(func(tx *bbolt.Tx) error {
 		bucket := tx.Bucket(petLogsBucket)
 
 		for _, log := range logs {
@@ -168,10 +168,10 @@ func (p *BoltDBEventTrackerStore) InsertLogs(logs []*ethgo.Log) error {
 // Outputs:
 // - logs ([]*ethgo.Log): The logs retrieved from the database for the given block number.
 // - err (error): Any error that occurred during the transaction or unmarshaling process.
-func (p *BoltDBEventTrackerStore) GetLogsByBlockNumber(blockNumber uint64) ([]*ethgo.Log, error) {
+func (p *BBoltDBEventTrackerStore) GetLogsByBlockNumber(blockNumber uint64) ([]*ethgo.Log, error) {
 	var logs []*ethgo.Log
 
-	err := p.db.View(func(tx *bolt.Tx) error {
+	err := p.db.View(func(tx *bbolt.Tx) error {
 		c := tx.Bucket(petLogsBucket).Cursor()
 		prefix := common.EncodeUint64ToBytes(blockNumber)
 
@@ -209,10 +209,10 @@ func (p *BoltDBEventTrackerStore) GetLogsByBlockNumber(blockNumber uint64) ([]*e
 // Outputs:
 //   - log (*ethgo.Log): The retrieved log from the BoltDB database. If the log does not exist, it will be nil.
 //   - err (error): Any error that occurred during the database operation. If no error occurred, it will be nil.
-func (p *BoltDBEventTrackerStore) GetLog(blockNumber, logIndex uint64) (*ethgo.Log, error) {
+func (p *BBoltDBEventTrackerStore) GetLog(blockNumber, logIndex uint64) (*ethgo.Log, error) {
 	var log *ethgo.Log
 
-	err := p.db.View(func(tx *bolt.Tx) error {
+	err := p.db.View(func(tx *bbolt.Tx) error {
 		logKey := bytes.Join([][]byte{
 			common.EncodeUint64ToBytes(blockNumber),
 			common.EncodeUint64ToBytes(logIndex)}, nil)
@@ -248,10 +248,10 @@ func (p *BoltDBEventTrackerStore) GetLog(blockNumber, logIndex uint64) (*ethgo.L
 // The code snippet returns a slice of ethgo.Log structs (logs) and an error (err).
 // The logs slice contains all the logs stored in the logs bucket in the BoltDB database.
 // The error will be non-nil if there was an issue with the read transaction or unmarshaling the log structs.
-func (p *BoltDBEventTrackerStore) GetAllLogs() ([]*ethgo.Log, error) {
+func (p *BBoltDBEventTrackerStore) GetAllLogs() ([]*ethgo.Log, error) {
 	var logs []*ethgo.Log
 
-	err := p.db.View(func(tx *bolt.Tx) error {
+	err := p.db.View(func(tx *bbolt.Tx) error {
 		return tx.Bucket(petLogsBucket).ForEach(func(k, v []byte) error {
 			var log *ethgo.Log
 			if err := json.Unmarshal(v, &log); err != nil {
